@@ -78,6 +78,16 @@ expphi = exp(1i*mv.*phiM);
 
 Y = pnm .* expphi;
 
+% ===================== FIX 1: CONDON-SHORTLEY PHASE =====================
+% As shipped, ott.utils.spharm returns (-1)^m times the standard (Condon-
+% Shortley) spherical harmonic -- verified against the closed forms, e.g.
+% Y_1^1 = -sqrt(3/(8*pi)) sin(th) exp(i*ph).  The Farsund recursions inside
+% ott.forcetorque were derived WITH the CS phase, so the two disagreed, and
+% the mismatch survives in F_x, F_y, T_x, T_y whenever a beam spans several m.
+% Restoring it here makes the whole package speak one convention -- the same
+% one as scipy, treams and the literature.
+Y = Y .* (-1).^mv;
+
 % Do we want to calculate the derivatives?
 if nargout <= 1
    Y=Y.';
@@ -123,6 +133,13 @@ ymminus=Y2(1:end-2,:);
 Yphi = 1i/2 * sqrt((2*n+1)/(2*n+3)) * ...
    ( sqrt((n+mv+1).*(n+mv+2)) .* expminus .* ymplus ...
    + sqrt((n-mv+1).*(n-mv+2)) .* expplus .* ymminus );
+
+% Ytheta and Yphi are built by recursions relating Y(n,m) to Y(n,m+-1).  Those
+% neighbours now carry (-1)^(m+-1) = -(-1)^m, so each derivative acquires one
+% extra minus sign relative to the patched Y.  Undo it.  (Checked against the
+% analytic dY/dtheta and (1/sin th) dY/dphi for (n,m) = (1,1), (2,1), (2,0).)
+Ytheta = -Ytheta;
+Yphi   = -Yphi;
 
 Y=Y(n+mi+1,:).';
 Yphi=Yphi(n+mi+1,:).';

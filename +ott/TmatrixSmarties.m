@@ -182,65 +182,31 @@ classdef TmatrixSmarties < ott.Tmatrix
     function data = getTmatrixData(CstTRa, name)
       % Convert the SMARTIES structure to T-matrix data
 
-      Nmax = length(CstTRa)-1;
-      tsz = ott.utils.combined_index(Nmax, Nmax);
-      data = sparse(2*tsz, 2*tsz);
-      sz = size(data);
-
-      % Loop over each multipole solution
-      for m = -Nmax:Nmax
-
-        n = abs(m)-1;
-        if m == 0, n = 0; end
-
-        % First do oe
-        blk = CstTRa{abs(m)+1}.([name, 'oe']);
-        assert(abs(m) == blk.m);
-
-        ridx = ott.utils.combined_index(n+blk.ind1, m);
-        cidx = ott.utils.combined_index(n+blk.ind1, m);
-        [ridx, cidx] = meshgrid(ridx, cidx);
-        data(sub2ind(sz, ridx, cidx)) = blk.M11;
-
-        ridx = ott.utils.combined_index(n+blk.ind1, m);
-        cidx = ott.utils.combined_index(n+blk.ind2, m);
-        [ridx, cidx] = meshgrid(ridx, cidx);
-        data(sub2ind(sz, ridx, cidx+tsz)) = blk.M12;
-
-        ridx = ott.utils.combined_index(n+blk.ind2, m);
-        cidx = ott.utils.combined_index(n+blk.ind1, m);
-        [ridx, cidx] = meshgrid(ridx, cidx);
-        data(sub2ind(sz, ridx+tsz, cidx)) = blk.M21;
-
-        ridx = ott.utils.combined_index(n+blk.ind2, m);
-        cidx = ott.utils.combined_index(n+blk.ind2, m);
-        [ridx, cidx] = meshgrid(ridx, cidx);
-        data(sub2ind(sz, ridx+tsz, cidx+tsz)) = blk.M22;
-
-        % Now do eo
-        blk = CstTRa{abs(m)+1}.([name, 'eo']);
-        assert(abs(m) == blk.m);
-
-        ridx = ott.utils.combined_index(n+blk.ind1, m);
-        cidx = ott.utils.combined_index(n+blk.ind1, m);
-        [ridx, cidx] = meshgrid(ridx, cidx);
-        data(sub2ind(sz, ridx, cidx)) = blk.M11;
-
-        ridx = ott.utils.combined_index(n+blk.ind1, m);
-        cidx = ott.utils.combined_index(n+blk.ind2, m);
-        [ridx, cidx] = meshgrid(ridx, cidx);
-        data(sub2ind(sz, ridx, cidx+tsz)) = blk.M12;
-
-        ridx = ott.utils.combined_index(n+blk.ind2, m);
-        cidx = ott.utils.combined_index(n+blk.ind1, m);
-        [ridx, cidx] = meshgrid(ridx, cidx);
-        data(sub2ind(sz, ridx+tsz, cidx)) = blk.M21;
-
-        ridx = ott.utils.combined_index(n+blk.ind2, m);
-        cidx = ott.utils.combined_index(n+blk.ind2, m);
-        [ridx, cidx] = meshgrid(ridx, cidx);
-        data(sub2ind(sz, ridx+tsz, cidx+tsz)) = blk.M22;
-      end
+      % ================= FIX 2: USE SMARTIES' OWN EXPORTER =================
+      % The original code here unfolded SMARTIES' |m| blocks onto +-m itself,
+      % with two defects:
+      %   (a) it dropped the (-1)^(s+s') that the achirality of a body of
+      %       revolution requires for m < 0 (SMARTIES applies it in
+      %       Utils/exportTmatrix.m:95), and
+      %   (b) it indexed through meshgrid(rows, cols), whose FIRST argument
+      %       varies along the COLUMNS, so every block was stored transposed.
+      % Measured on an oblate spheroid: achirality violated by 2.0 (a 100%
+      % breach), unitarity 1.06e-3 for a lossless particle, and ~31% median /
+      % 130% worst-case error against COMSOL.
+      %
+      % SMARTIES ships sparseTmatrix, which applies the sign itself and returns
+      % the assembled matrix ALREADY in Nieminen ordering -- byte-identical to
+      % ott.utils.combined_index.  So the whole unfold reduces to one call and
+      % there is nowhere left to introduce an indexing bug.
+      % KNOWN LIMITATION: sparseTmatrix assembles the scattered-field T-matrix
+      % only, so the 'internal' option (which asks for st4MR) is unsupported.
+      % Erroring is deliberate -- the hand-rolled unfold it replaced returned a
+      % transposed, wrong-signed matrix for that case rather than complaining.
+      assert(strcmpi(name, 'st4MT'), ...
+          ['TmatrixSmarties: this build assembles the T-matrix via SMARTIES ', ...
+           'sparseTmatrix, which provides the scattered-field T-matrix only. ', ...
+           'The ''internal'' option (name=''', name, ''') is not supported.']);
+      data = sparseTmatrix(CstTRa);
     end
   end
 end
