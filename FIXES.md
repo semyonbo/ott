@@ -55,43 +55,48 @@ with the sign and index order applied correctly.
 
 ## Validation against COMSOL
 
-Third-party check on the discriminating geometry: an oblate spheroid
-(357 / 357 / 250 nm, `eps_p = 12`) in a standing wave at `lam0 = 1550 nm`, phase
-`ph_s = 45 deg`, with the wave axis and polarisation swept over **114
-orientations** relative to the particle. Force and torque come from COMSOL's own
-Maxwell stress tensor integrated on a surrounding sphere (`force_torque_vs_angles.mph`).
-Tilting the wave off the symmetry axis makes the coefficients span many `m`,
-which is exactly where the phase defect bites.
+COMSOL model `force_torque_vs_angles.mph`: standing wave at `lam0 = 1550 nm`,
+phase `ph_s = 45 deg`, `eps_p = 12`, with the wave axis and polarisation swept
+over the particle. Force and torque from COMSOL's own Maxwell stress tensor on a
+surrounding sphere. Two particles, so the two fixes can be told apart — a
+**sphere** (r = 250 nm) uses analytic Mie and never touches `TmatrixSmarties`,
+while the **spheroid** (357/357/250 nm) goes through it.
 
-Median relative error against COMSOL over the 114 orientations:
+Median relative error against COMSOL:
 
 | | `F_z` | `F_xy` | `T_z` | `T_xy` |
 |---|---|---|---|---|
-| unpatched OTT | 34.5% | 31.4% | 0.6% | **66.5%** |
-| **patched OTT** | **0.5%** | **0.2%** | **0.1%** | **0.4%** |
+| sphere, unpatched | 0.49% | 0.58% | — | — |
+| sphere, patched | 0.49% | 0.58% | — | — |
+| spheroid, unpatched | 53.6% | 56.7% | — | 63.7% |
+| **spheroid, patched** | **0.85%** | **0.49%** | — | **0.32%** |
 
-and the direction of the transverse part, as a median cosine against COMSOL:
+`—` marks a component COMSOL itself returns as numerically zero, where no
+relative error is defined: a lossless sphere in this beam feels no transverse
+force and no torque at all, and `T_z` vanishes by symmetry for both particles.
 
-| | `F_xy` | `T_xy` |
-|---|---|---|
-| unpatched OTT | 0.9927 | 0.8329 |
-| **patched OTT** | **1.0000** | **1.0000** |
+**The spheroid discrepancy is FIX 2, not FIX 1.** On the sphere the two builds
+are bit-identical — `max |unpatched − patched| = 0.000e+00` in both force and
+torque — so the Condon–Shortley phase contributes nothing to the spheroid error.
+Confirmed directly on a single configuration:
 
-`T_z` survives unpatched, as the selection-rule argument in Appendix B predicts.
-Everything else does not: the transverse torque is two thirds wrong and visibly
-misdirected. Note that `F_z` is also wrong here, which the force sums alone would
-not explain — in this test the *beam* is rotated, so the mirrored rotation
-described below corrupts the axial component too.
+```
+             sphere (analytic Mie)   spheroid (SMARTIES)
+unpatched    Fz = -84.9768490        Fz =  -44.275
+patched      Fz = -84.9768490        Fz = -111.056
+```
 
-Reproduce with `swforce_compare/matlab/ott_vs_comsol.m` (run once per OTT build)
-and `swforce_compare/verification/report_ott_vs_comsol.py` in the BIC-Force
-project.
+`F_z` is identical to every digit on the sphere, exactly as the selection-rule
+argument in Appendix B requires, and off by a factor 2.5 on the spheroid.
 
-**The `Dz = diag(-1,-1,1)` workaround is not what separates these arms.** Applied
-consistently — to the rotation argument *and* to the force/torque output, as the
-StandingWave `sw` package does — the two applications cancel exactly in this
-parameterisation (measured difference 0.0). It neither helps nor hurts here; the
-patch is what moves the numbers.
+**This dataset does not exercise FIX 1.** A sphere in this standing wave has no
+transverse force and no torque, so there is no `m`-mixing observable for the
+phase to corrupt, and the spheroid case is dominated by the T-matrix defect.
+FIX 1 is pinned separately against `swforce` over ten beam/particle combinations
+in `swforce_compare/data/ott_fixed_validation.json`.
+
+Reproduce with `swforce_compare/matlab/ott_vs_comsol.m` (once per OTT build, per
+shape) and `swforce_compare/verification/report_ott_vs_comsol.py`.
 
 ## What else changes, even though these files don't
 
@@ -129,19 +134,33 @@ the finite-`Nmax` floor.
 **`BscPlane(θ,φ)` propagates along `−r̂(θ,φ)`**, unchanged and unrelated to the
 phase, but note it disagrees with `BscPmGauss`, which goes along `+z`.
 
-## What this breaks in existing code
+## What changes in existing results
 
-| unchanged | changed (these were wrong) |
+The two fixes have different blast radii and must not be conflated.
+
+**FIX 2 changes every result for a spheroid**, including `F_z` and `|F|`, because
+the T-matrix itself was wrong — measured factor 2.5 on `F_z` above. Anything
+built on `ott.Tmatrix.simple('ellipsoid', ...)` or `TmatrixSmarties` has to be
+recomputed. It affects nothing else: spheres go through `TmatrixMie`, and other
+shapes through their own classes.
+
+**FIX 1 is narrower**, and the selection rules say exactly how narrow:
+
+| unchanged by FIX 1 | changed by FIX 1 |
 |---|---|
-| on-axis beams, z-translations | oblique `BscPlane` |
-| cross sections, all fields | displaced/rotated Gaussians |
-| `axial_equilibrium`, `find_traps` | tilted non-axisymmetric particles |
-| `F_z`, `T_z`, `\|F\|` anywhere | `F_x, F_y, T_x, T_y` with mixed `m` |
+| `F_z`, `T_z` — terms pairing `m` with `m` | `F_x, F_y, T_x, T_y` — terms pairing `m` with `m ± 1` |
+| on-axis beams on axisymmetric particles | oblique `BscPlane` |
+| cross sections | rotated particles and tilted beams |
+| `axial_equilibrium`, `find_traps` | `translateXyz` off the z axis (see below) |
 
-**Any script that compensated for the old rotation convention must be updated** —
-notably `swOrientation.m` in the StandingWave project, whose transposed `Rz`/`Ry`
-cancelled the old mirror. Leaving such a workaround in place cancels the fix and
-silently restores the old answer.
+Verified rather than asserted: on a sphere, where FIX 2 cannot apply, the two
+builds agree to `0.000e+00` in both force and torque for this beam.
+
+**Any script that compensated for the old rotation convention must be updated.**
+The StandingWave project's `sw` package is the example: `sw.Dz` corrects the
+force/torque output and `sw.toParticleFrame` rotates with `Dz*R*Dz`. Applied to
+both, the two cancel and the workaround is inert; applied to only one, it now
+introduces the very error it used to remove.
 
 ---
 
