@@ -31,8 +31,16 @@ defects: it dropped the `(−1)^(s+s')` required by the achirality of a body of
 revolution, and it indexed through `meshgrid(rows, cols)` — whose first argument
 varies along the **columns** — storing every block transposed.
 
-Measured: achirality violated by `2.0`, unitarity `1.06e−3` for a *lossless*
-particle, ~31% median / 130% worst error vs COMSOL.
+Measured on an oblate spheroid (`ellipsoid [0.25 0.25 0.12]`, `n_rel = 2.5`):
+achirality violated by `2.0` — a 100% breach — and unitarity `1.06e−3` for a
+*lossless* particle. After the fix, reproducible with
+`swforce_compare/matlab/verify_tmat.m` in the BIC-Force project:
+
+```
+max |patched - direct SMARTIES| : 3.511e-16
+achirality T12(-m) = -T12(+m)   : 0.000e+00
+unitarity                       : 7.091e-05   (Nmax=6 truncation, not a defect)
+```
 
 Replaced by SMARTIES' own `sparseTmatrix`, which applies the sign and returns the
 matrix already in Nieminen (= `ott.utils.combined_index`) ordering.
@@ -45,32 +53,27 @@ the same way as the scattered case, so nothing that worked has been lost — onl
 something that appeared to. Restoring it means unfolding SMARTIES' `st4MR` blocks
 with the sign and index order applied correctly.
 
-## What is NOT changed, and why
+## What else changes, even though these files don't
 
-**`wigner_rotation_matrix` is left alone.** It is exactly unitary (`|D†D−I| =
-2e−15`) and equals the standard Condon–Shortley Wigner matrix Hermitian-
-conjugated — verified against `treams` to **5.8e−16**:
+Removing the phase changes the behaviour of code it feeds. Both items below are
+things to check in existing scripts, not defences of code nobody questioned.
 
-```
-|D_ott − D_treams† | = 5.796e-16
-|D_ott − D_treams  | = 1.225e+00
-```
+**Rotations.** `diag((−1)^m)` *is* the Wigner matrix of a 180° z-rotation, so
+while the phase was missing, `rotate(R)` applied `Z·Rᵀ·Z` with `Z = diag(−1,−1,1)`
+— a mirrored rotation. It now applies plain `Rᵀ`, i.e. `R⁻¹`, which is the
+row-vector convention `wigner_rotation_matrix`'s own header describes.
 
-So `rotate(R)` applies **`R⁻¹`**. That is a consistent convention (it is the
-row-vector derivation the file's own header describes), not an error. Removing
-the `D1 = D.'` transpose was tested and **breaks composition** — do not.
+`wigner_rotation_matrix` itself is deliberately **not** patched: it is unitary to
+`2e−15` and matches `treams`' Wigner matrix Hermitian-conjugated to `5.8e−16`, so
+the inverse convention is a choice, not a defect. Recorded here only because
+removing its `D1 = D.'` transpose looks like the obvious fix and **breaks
+composition** — don't.
 
-Before FIX 1 the phase and this convention combined to make `rotate(R)` apply
-`Z·Rᵀ·Z` with `Z = diag(−1,−1,1)`, because `diag((−1)^m)` *is* the Wigner matrix
-of a 180° z-rotation. **FIX 1 removes that mirror as a side effect**, leaving the
-plain inverse convention.
-
-**`translateXyz` is repaired as a side effect — measured, not assumed.**
-`translateRtp`'s general branch is *rotate → translateZ → rotate back*, which
-translates along `S⁻¹(ẑ)`. `translateZ` is exact; the rotation was the mirrored
-one, so the composition moved the beam by `Z·d` instead of `d`. That produced the
-notorious inconsistency — z-displacements matching one sign, x/y the other, and a
-general displacement matching neither. Removing the mirror fixes it:
+**Translations.** `translateXyz` is fixed as a consequence. Its general branch is
+*rotate → translateZ → rotate back*; `translateZ` is exact, but the rotation was
+the mirrored one, so the composition moved the beam by `Z·d` instead of `d`. That
+is the long-standing inconsistency where z-displacements matched one sign and x/y
+the other:
 
 | d | `E(r−d)` | `E(r+d)` |
 |---|---|---|
@@ -80,26 +83,25 @@ general displacement matching neither. Removing the mirror fixes it:
 | (+0.13, −0.09, +0.21) | 1.7e+00 | **1.2e−06** |
 | (−0.05, +0.17, −0.12) | 3.3e−01 | **1.2e−06** |
 
-All displacements now obey one rule, `translateXyz(d) → E(r + d)`.
-(1e−06 is the finite-`Nmax` floor.)
+Every displacement now obeys one rule, `translateXyz(d) → E(r + d)`; `1e−06` is
+the finite-`Nmax` floor.
 
-**`BscPlane(θ,φ)` still propagates along `−r̂(θ,φ)`.** Independent convention,
-unaffected by the phase — and note it disagrees with `BscPmGauss`, which
-propagates along `+z`. Not a defect (`|F|` and `F·k̂` are both right), but a trap
-if you assume the two beam classes share a sense.
+**`BscPlane(θ,φ)` propagates along `−r̂(θ,φ)`**, unchanged and unrelated to the
+phase, but note it disagrees with `BscPmGauss`, which goes along `+z`.
 
-## Consequences
+## What this breaks in existing code
 
 | unchanged | changed (these were wrong) |
 |---|---|
 | on-axis beams, z-translations | oblique `BscPlane` |
-| cross sections, all fields | displaced/rotated Gaussians (140–190%) |
+| cross sections, all fields | displaced/rotated Gaussians |
 | `axial_equilibrium`, `find_traps` | tilted non-axisymmetric particles |
 | `F_z`, `T_z`, `\|F\|` anywhere | `F_x, F_y, T_x, T_y` with mixed `m` |
 
 **Any script that compensated for the old rotation convention must be updated** —
 notably `swOrientation.m` in the StandingWave project, whose transposed `Rz`/`Ry`
-cancelled the old mirror.
+cancelled the old mirror. Leaving such a workaround in place cancels the fix and
+silently restores the old answer.
 
 ---
 
@@ -155,38 +157,7 @@ against the unnormalised form, or against the closed-form harmonics.
 
 ---
 
-# Appendix B — where the `(−1)^m` comes from at all
-
-**Nothing forces it.** It is a phase convention on the basis states. It is *not*
-required by:
-
-* the Legendre or Helmholtz differential equation — solutions are fixed only up
-  to a multiplicative constant;
-* normalisation — a unit-modulus phase does not change `∫|Y|² dΩ = 1`;
-* orthogonality — a diagonal phase preserves it;
-* the spherical Bessel functions — those are the *radial* part; this lives
-  entirely in the angular part.
-
-It is chosen so the **angular-momentum ladder operators have real, positive
-matrix elements**:
-
-```
-L± |l,m⟩ = sqrt( l(l+1) − m(m±1) ) |l,m±1⟩ = sqrt( (l∓m)(l±m+1) ) |l,m±1⟩
-```
-
-Condon & Shortley (*The Theory of Atomic Spectra*, 1935) fixed the relative
-phases of the `|l,m⟩` states precisely so this holds with no stray signs.
-Everything built on angular-momentum algebra inherits that choice: Wigner 3j/6j
-symbols, the Wigner–Eckart theorem, the Wigner d-matrices, and the standard
-tables. In the formula the phase literally sits here:
-
-```
-P_l^m(x) = (−1)^m (1 − x²)^(m/2) dᵐ/dxᵐ P_l(x)
-```
-
-and the convention lets you move it to `Y` instead — but exactly once.
-
-## Why this is fatal specifically for force, and harmless elsewhere
+# Appendix B — why only the transverse components broke
 
 **Farsund's sums are angular-momentum ladder algebra.** The coefficient that
 appears throughout them,
@@ -217,3 +188,4 @@ By the selection rules, `F_z` and `T_z` pair `m` with `m`, and
 **axial components correct, transverse components sign-flipped** — and only when
 the coefficients actually span several `m`, which is why on-axis beams on
 axisymmetric particles never showed it.
+
