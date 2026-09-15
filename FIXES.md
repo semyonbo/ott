@@ -53,6 +53,46 @@ the same way as the scattered case, so nothing that worked has been lost — onl
 something that appeared to. Restoring it means unfolding SMARTIES' `st4MR` blocks
 with the sign and index order applied correctly.
 
+## Validation against COMSOL
+
+Third-party check on the discriminating geometry: an oblate spheroid
+(357 / 357 / 250 nm, `eps_p = 12`) in a standing wave at `lam0 = 1550 nm`, phase
+`ph_s = 45 deg`, with the wave axis and polarisation swept over **114
+orientations** relative to the particle. Force and torque come from COMSOL's own
+Maxwell stress tensor integrated on a surrounding sphere (`force_torque_vs_angles.mph`).
+Tilting the wave off the symmetry axis makes the coefficients span many `m`,
+which is exactly where the phase defect bites.
+
+Median relative error against COMSOL over the 114 orientations:
+
+| | `F_z` | `F_xy` | `T_z` | `T_xy` |
+|---|---|---|---|---|
+| unpatched OTT | 34.5% | 31.4% | 0.6% | **66.5%** |
+| **patched OTT** | **0.5%** | **0.2%** | **0.1%** | **0.4%** |
+
+and the direction of the transverse part, as a median cosine against COMSOL:
+
+| | `F_xy` | `T_xy` |
+|---|---|---|
+| unpatched OTT | 0.9927 | 0.8329 |
+| **patched OTT** | **1.0000** | **1.0000** |
+
+`T_z` survives unpatched, as the selection-rule argument in Appendix B predicts.
+Everything else does not: the transverse torque is two thirds wrong and visibly
+misdirected. Note that `F_z` is also wrong here, which the force sums alone would
+not explain — in this test the *beam* is rotated, so the mirrored rotation
+described below corrupts the axial component too.
+
+Reproduce with `swforce_compare/matlab/ott_vs_comsol.m` (run once per OTT build)
+and `swforce_compare/verification/report_ott_vs_comsol.py` in the BIC-Force
+project.
+
+**The `Dz = diag(-1,-1,1)` workaround is not what separates these arms.** Applied
+consistently — to the rotation argument *and* to the force/torque output, as the
+StandingWave `sw` package does — the two applications cancel exactly in this
+parameterisation (measured difference 0.0). It neither helps nor hurts here; the
+patch is what moves the numbers.
+
 ## What else changes, even though these files don't
 
 Removing the phase changes the behaviour of code it feeds. Both items below are
