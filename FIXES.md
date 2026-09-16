@@ -66,8 +66,13 @@ blocks through the same `sparseTmatrix` assembly. It works, and improves from
 **unresolved**. The error is uniform in `m` (0.146 for `m ≥ 0`, 0.184 for
 `m < 0`), so it is not the achirality sign; the scattered matrix, which shares
 the identical code path, agrees to 0.4%. That points to a normalisation or
-definition difference between SMARTIES' R-matrix and OTT's internal convention.
-Treat the internal spheroid matrix as unvalidated.
+definition difference rather than an assembly error — confirmed by repairing
+OTT's original hand-rolled unfold (adding the achirality sign, replacing
+`meshgrid` with `ndgrid`) and comparing: the two routes agree to `0.0000e+00`
+for the internal matrix *and* for the scattered one. Two independent assemblies
+agreeing does not make either right; both could share a wrong assumption about
+what OTT means by an internal T-matrix. **Treat the internal spheroid matrix as
+unvalidated.**
 
 ## Validation against COMSOL
 
@@ -106,20 +111,34 @@ patched      Fz = -84.9768490        Fz = -111.056
 argument in Appendix B requires, and off by a factor 2.5 on the spheroid.
 
 **This dataset does not exercise FIX 1 — at all.** Swapping the T-matrix for
-`ott.TmatrixEbcm`, which bypasses FIX 2 entirely, and running it in the
-*unpatched* build gives 0.77% / 0.54% / 0.42% — **bit-identical** to the patched
-build (`max |F_unpatched − F_patched| = 0.000e+00` over all 114 orientations).
-The Condon-Shortley phase changes nothing here. The entire 53% error was FIX 2.
+`ott.TmatrixEbcm`, which bypasses FIX 2, and running it *unpatched* gives
+0.77% / 0.54% / 0.42% — bit-identical to patched (`max |ΔF| = 0.000e+00` over all
+114 orientations). The beam here is built from `BscPlane(0,0)` and
+`BscPlane(pi,0)`, both on axis, then rotated; `diag((−1)^m)` is the Wigner matrix
+of a 180° z-rotation, so on an on-axis beam the missing phase is a global phase
+and cancels in the bilinear force. **The entire 53% error above is FIX 2.**
 
-The reason is the beam: it is built from `BscPlane(0,0)` and `BscPlane(pi,0)`,
-both on axis, and then rotated. `diag((−1)^m)` is the Wigner matrix of a 180°
-z-rotation, so on an on-axis beam the defect amounts to a global phase. It takes
-a beam constructed **at an oblique angle** to expose it.
+### FIX 1, validated separately — sphere, beam built at an angle
 
-So: **FIX 1 is established analytically** (`spharm` against the closed-form
-harmonics, §1.1 of the verification notes) **but has never been shown to change
-a force or torque in any test in this repository.** Do not cite the COMSOL
-numbers as evidence for it.
+A sphere in a single plane wave must feel a force exactly along `k̂`. That is an
+absolute symmetry statement needing no FEM, and a sphere uses `TmatrixMie`, so
+FIX 2 cannot interfere. The beam must be *constructed* at the angle, not built
+on axis and rotated.
+
+| θ | unpatched `F·k̂/\|F\|` | patched |
+|---|---|---|
+| 0° | 1.00000 | 1.00000000 |
+| 30° | 0.50000 | **1.00000000** |
+| 45° | 0.00000 | **1.00000000** |
+| 60° | −0.50000 | **1.00000000** |
+| 75° | −0.86603 | **1.00000000** |
+
+Unpatched, the force is perpendicular to the beam at 45° and points backwards at
+75°. The measured ratio is `cos(2θ)` at every angle — the signature of
+`F = diag(−1,−1,1)·F_true`. The transverse components flip sign while `F_z` is
+bit-identical between builds (55.96, 45.69, 32.31, 16.72), which is exactly the
+selection rule of Appendix B. Reproduce with
+`swforce_compare/matlab/probe_fix1_oblique.m`.
 
 Reproduce with `swforce_compare/matlab/ott_vs_comsol.m` (once per OTT build, per
 shape) and `swforce_compare/verification/report_ott_vs_comsol.py`.
