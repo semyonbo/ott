@@ -120,16 +120,20 @@ the mirrored one, so the composition moved the beam by `Z·d` instead of `d`. Th
 is the long-standing inconsistency where z-displacements matched one sign and x/y
 the other:
 
-| d | `E(r−d)` | `E(r+d)` |
-|---|---|---|
-| (0, 0, +0.20) | 1.7e+00 | **1.0e−06** |
-| (+0.20, 0, 0) | 6.3e−01 | **9.5e−07** |
-| (0, +0.20, 0) | 1.2e+00 | **1.3e−06** |
-| (+0.13, −0.09, +0.21) | 1.7e+00 | **1.2e−06** |
-| (−0.05, +0.17, −0.12) | 3.3e−01 | **1.2e−06** |
+Measured on a focused Gaussian, relative error against each candidate:
 
-Every displacement now obeys one rule, `translateXyz(d) → E(r + d)`; `1e−06` is
-the finite-`Nmax` floor.
+| d (units of λ) | unpatched `E(r−d)` | unpatched `E(r+d)` | patched `E(r+d)` |
+|---|---|---|---|
+| (0, 0, +0.20) | 1.8e+00 | **6.7e−15** | **6.7e−15** |
+| (+0.20, 0, 0) | **5.2e−15** | 7.3e−01 | **5.3e−15** |
+| (0, +0.20, 0) | **6.0e−15** | 7.8e−01 | **4.9e−15** |
+| (+0.13, −0.09, +0.21) | 1.8e+00 | 5.8e−01 | **6.7e−15** |
+| (−0.05, +0.17, −0.12) | 1.2e+00 | 6.9e−01 | **5.7e−15** |
+
+Unpatched, z-displacements obeyed `E(r+d)`, x and y obeyed `E(r−d)` — the
+opposite sign — and a general displacement matched **neither**. Patched, all five
+obey `translateXyz(d) → E(r + d)` to machine precision. Reproduce with
+`swforce_compare/matlab/probe_translate.m`.
 
 **`BscPlane(θ,φ)` propagates along `−r̂(θ,φ)`**, unchanged and unrelated to the
 phase, but note it disagrees with `BscPmGauss`, which goes along `+z`.

@@ -7,3 +7,6 @@ octave-workspace
 
 .DS_Store
 
+
+# personal verification checklist, not for upstream
+VERIFY.md
