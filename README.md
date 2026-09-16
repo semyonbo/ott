@@ -11,9 +11,8 @@ ott - Optical Tweezers Toolbox (patched fork)
 > * **[VERIFY.md](VERIFY.md)** - what is still unproven and how to prove it
 >
 > Behaviour changes to be aware of before reusing old scripts: rotations no
-> longer carry a mirror, `translateXyz` is fixed off the z axis, every spheroid
-> result changes, and `TmatrixSmarties(..., 'internal', true)` now errors.
-> Requires SMARTIES on the MATLAB path.
+> longer carry a mirror, `translateXyz` is fixed off the z axis, and every
+> spheroid result changes. Requires SMARTIES on the MATLAB path.
 
 
 [![DOI](https://zenodo.org/badge/123386773.svg)](https://zenodo.org/badge/latestdoi/123386773)

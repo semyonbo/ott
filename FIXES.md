@@ -46,12 +46,28 @@ Replaced by SMARTIES' own `sparseTmatrix`, which applies the sign and returns th
 matrix already in Nieminen (= `ott.utils.combined_index`) ordering.
 **Requires SMARTIES on the MATLAB path.**
 
-**Regression:** `sparseTmatrix` assembles the scattered-field T-matrix only, so
-`TmatrixSmarties.simple(..., 'internal', true)` now errors instead of returning a
-matrix. The code it replaced did return one, but transposed and wrong-signed in
-the same way as the scattered case, so nothing that worked has been lost — only
-something that appeared to. Restoring it means unfolding SMARTIES' `st4MR` blocks
-with the sign and index order applied correctly.
+**Independent confirmation.** `ott.TmatrixEbcm` solves the same spheroid by a
+completely different method (null-field / extended boundary condition). Against
+it, for `ellipsoid [0.25 0.25 0.12]`, `n_rel = 2.5`:
+
+| | vs EBCM | unitarity (lossless) |
+|---|---|---|
+| unpatched | 9.98e−02 | 4.03e−03 |
+| **patched** | **3.82e−03** | **6.95e−04** |
+
+26x better agreement and 5.8x better unitarity. Note EBCM must be run at
+`npts ≈ 50`: at `npts ≥ 100` its own system matrix goes singular
+(`RCOND = 3e−27`) and it returns garbage, which is easy to mistake for a
+disagreement.
+
+**The internal-field option** (`'internal', true`) routes SMARTIES' `st4MR`
+blocks through the same `sparseTmatrix` assembly. It works, and improves from
+80% to 16% disagreement with EBCM's internal matrix — but 16% is still poor and
+**unresolved**. The error is uniform in `m` (0.146 for `m ≥ 0`, 0.184 for
+`m < 0`), so it is not the achirality sign; the scattered matrix, which shares
+the identical code path, agrees to 0.4%. That points to a normalisation or
+definition difference between SMARTIES' R-matrix and OTT's internal convention.
+Treat the internal spheroid matrix as unvalidated.
 
 ## Validation against COMSOL
 

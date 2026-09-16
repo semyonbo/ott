@@ -12,9 +12,10 @@ classdef TmatrixSmarties < ott.Tmatrix
 %
 % This build assembles the T-matrix with SMARTIES' own sparseTmatrix rather
 % than unfolding the |m| blocks here; the previous unfold dropped a sign and
-% stored every block transposed.  sparseTmatrix provides the SCATTERED-field
-% T-matrix only, so the 'internal' option is not supported and errors.  See
-% FIXES.md.
+% stored every block transposed.  The 'internal' option routes SMARTIES' st4MR
+% blocks through the same assembly.  NOTE: the internal matrix still differs
+% from ott.TmatrixEbcm by ~16%, uniformly in m, which is unresolved -- the
+% scattered matrix agrees with EBCM to 0.4%.  See FIXES.md.
 %
 % See also TmatrixSmarties
 
@@ -204,15 +205,26 @@ classdef TmatrixSmarties < ott.Tmatrix
       % the assembled matrix ALREADY in Nieminen ordering -- byte-identical to
       % ott.utils.combined_index.  So the whole unfold reduces to one call and
       % there is nowhere left to introduce an indexing bug.
-      % KNOWN LIMITATION: sparseTmatrix assembles the scattered-field T-matrix
-      % only, so the 'internal' option (which asks for st4MR) is unsupported.
-      % Erroring is deliberate -- the hand-rolled unfold it replaced returned a
-      % transposed, wrong-signed matrix for that case rather than complaining.
-      assert(strcmpi(name, 'st4MT'), ...
-          ['TmatrixSmarties: this build assembles the T-matrix via SMARTIES ', ...
-           'sparseTmatrix, which provides the scattered-field T-matrix only. ', ...
-           'The ''internal'' option (name=''', name, ''') is not supported.']);
-      data = sparseTmatrix(CstTRa);
+      % sparseTmatrix reads the 'st4MT' blocks.  SMARTIES returns the internal
+      % (regular) solution in the identically-shaped 'st4MR' blocks, so for the
+      % internal matrix we simply present those under the name sparseTmatrix
+      % looks for.  That reuses SMARTIES' own assembly -- which applies the
+      % (-1)^(s+s') achirality sign and the Nieminen ordering -- for both cases,
+      % instead of the hand-rolled unfold that got each of those wrong.
+      switch lower(name)
+        case 'st4mt'
+          data = sparseTmatrix(CstTRa);
+        case 'st4mr'
+          shim = CstTRa;
+          for ii = 1:numel(shim)
+            shim{ii}.st4MToe = CstTRa{ii}.st4MRoe;
+            shim{ii}.st4MTeo = CstTRa{ii}.st4MReo;
+          end
+          data = sparseTmatrix(shim);
+        otherwise
+          error('ott:TmatrixSmarties:name', ...
+                'unknown matrix name ''%s'' (expected st4MT or st4MR)', name);
+      end
     end
   end
 end
