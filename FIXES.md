@@ -105,11 +105,21 @@ patched      Fz = -84.9768490        Fz = -111.056
 `F_z` is identical to every digit on the sphere, exactly as the selection-rule
 argument in Appendix B requires, and off by a factor 2.5 on the spheroid.
 
-**This dataset does not exercise FIX 1.** A sphere in this standing wave has no
-transverse force and no torque, so there is no `m`-mixing observable for the
-phase to corrupt, and the spheroid case is dominated by the T-matrix defect.
-FIX 1 is pinned separately against `swforce` over ten beam/particle combinations
-in `swforce_compare/data/ott_fixed_validation.json`.
+**This dataset does not exercise FIX 1 — at all.** Swapping the T-matrix for
+`ott.TmatrixEbcm`, which bypasses FIX 2 entirely, and running it in the
+*unpatched* build gives 0.77% / 0.54% / 0.42% — **bit-identical** to the patched
+build (`max |F_unpatched − F_patched| = 0.000e+00` over all 114 orientations).
+The Condon-Shortley phase changes nothing here. The entire 53% error was FIX 2.
+
+The reason is the beam: it is built from `BscPlane(0,0)` and `BscPlane(pi,0)`,
+both on axis, and then rotated. `diag((−1)^m)` is the Wigner matrix of a 180°
+z-rotation, so on an on-axis beam the defect amounts to a global phase. It takes
+a beam constructed **at an oblique angle** to expose it.
+
+So: **FIX 1 is established analytically** (`spharm` against the closed-form
+harmonics, §1.1 of the verification notes) **but has never been shown to change
+a force or torque in any test in this repository.** Do not cite the COMSOL
+numbers as evidence for it.
 
 Reproduce with `swforce_compare/matlab/ott_vs_comsol.m` (once per OTT build, per
 shape) and `swforce_compare/verification/report_ott_vs_comsol.py`.
