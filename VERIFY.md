@@ -185,8 +185,15 @@ components are untouched by the phase; if COMSOL shows unpatched `F_z` wrong on 
 - [ ] §1.3 sphere force direction vs Mie `C_pr`, both builds
 - [ ] §2.1 run `comsol_validate.m`, save `comsol_validate.json`
 - [ ] §2.2 cylinder force + torque vs COMSOL, both builds
-- [ ] restore the internal-field path (`st4MR`) or document it as out of scope —
-      currently `TmatrixSmarties.simple(..., 'internal', true)` errors
+- [ ] decide on the internal-field path. Checked: SMARTIES' `sparseTmatrix`
+      calls `exportTmatrix`, which calls `combine_oeeo(stT{i_m})` with one
+      argument, and that function hardcodes `fieldname = 'st4MT'`. The field
+      name *is* a parameter of `combine_oeeo`, but neither `exportTmatrix` nor
+      `sparseTmatrix` exposes it, and `combine_oeeo` is a local function inside
+      `exportTmatrix.m` so it cannot be called directly. Restoring `internal`
+      therefore means either patching SMARTIES to pass the field through, or
+      writing a correct unfold in OTT — the thing FIX 2 deleted. Not a
+      one-liner; currently it errors, which is at least honest.
 - [ ] check `TmatrixPm` and `TmatrixDda` for the same `meshgrid` transpose bug
       that FIX 2 removed from `TmatrixSmarties`; the pattern may repeat
 - [ ] run OTT's own test suite (`tests/`) on the patched build and report diffs,

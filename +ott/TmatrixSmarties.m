@@ -10,6 +10,12 @@ classdef TmatrixSmarties < ott.Tmatrix
 %   Somerville, Auguié, Le Ru.  JQSRT, Volume 174, May 2016, Pages 39-55.
 %   https://doi.org/10.1016/j.jqsrt.2016.01.005
 %
+% This build assembles the T-matrix with SMARTIES' own sparseTmatrix rather
+% than unfolding the |m| blocks here; the previous unfold dropped a sign and
+% stored every block transposed.  sparseTmatrix provides the SCATTERED-field
+% T-matrix only, so the 'internal' option is not supported and errors.  See
+% FIXES.md.
+%
 % See also TmatrixSmarties
 
 % This file is part of the optical tweezers toolbox.

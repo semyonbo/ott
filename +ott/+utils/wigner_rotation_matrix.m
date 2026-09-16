@@ -8,6 +8,14 @@ function D = wigner_rotation_matrix( nmax, R )
 % This method from Choi et al., J. Chem. Phys. 111: 8825-8831 (1999)
 % Note change in notation - here, use x' = Rx (x is row vector),
 % a' = Da (a is column vector) etc.
+%
+% DIRECTION: D is built in the row-vector convention, so applying it to a
+% coefficient vector rotates the FIELD by R' = inv(R), not by R.  Measured on
+% a focused Gaussian over several rotations: E_rotated(x) = R'*E(R*x) to 1e-15.
+% This is a convention, not a defect - D is exactly unitary (|D'D - I| = 2e-15)
+% and equals the standard Condon-Shortley Wigner matrix Hermitian-conjugated
+% (agrees with treams to 5.8e-16).  Removing the D1 = D.' transpose below to
+% "fix" the direction breaks composition, D(R1*R2) ~= D(R1)*D(R2).  Don't.
 
 % This file is part of the optical tweezers toolbox.
 % See LICENSE.md for information about using/distributing this file.

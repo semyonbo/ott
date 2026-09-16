@@ -16,6 +16,16 @@ function [Y,Ytheta,Yphi] = spharm(n,m,theta,phi)
 % m columns.
 %
 % "Out of range" n and m result in return of Y = 0
+%
+% CONVENTION: these are the standard Condon-Shortley harmonics, i.e. the same
+% sign convention as scipy.special.sph_harm, treams, and the usual tables:
+%
+%     Y_1^1 = -sqrt(3/(8*pi)) sin(theta) exp(i*phi)      (note the minus)
+%
+% Earlier releases of the toolbox returned (-1)^m times these, because
+% legendrerow implements a geodesy recursion that omits the phase.  The
+% Farsund expressions in ott.forcetorque assume it is present, so the two
+% disagreed in F_x, F_y, T_x and T_y.  See FIXES.md.
 
 % This file is part of the optical tweezers toolbox.
 % See LICENSE.md for information about using/distributing this file.

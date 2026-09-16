@@ -1,5 +1,20 @@
-ott - Optical Tweezers Toolbox
-==============================
+ott - Optical Tweezers Toolbox (patched fork)
+============================================
+
+> **This is a patched fork, not upstream OTT.** Two defects are repaired:
+> the missing Condon-Shortley phase in `ott.utils.spharm`, which corrupted
+> `F_x, F_y, T_x, T_y` for any beam spanning several `m`, and the SMARTIES
+> T-matrix import in `ott.TmatrixSmarties`, which dropped a sign and stored
+> every block transposed.
+>
+> * **[FIXES.md](FIXES.md)** - what changed, why, and the COMSOL validation
+> * **[VERIFY.md](VERIFY.md)** - what is still unproven and how to prove it
+>
+> Behaviour changes to be aware of before reusing old scripts: rotations no
+> longer carry a mirror, `translateXyz` is fixed off the z axis, every spheroid
+> result changes, and `TmatrixSmarties(..., 'internal', true)` now errors.
+> Requires SMARTIES on the MATLAB path.
+
 
 [![DOI](https://zenodo.org/badge/123386773.svg)](https://zenodo.org/badge/latestdoi/123386773)
 [![Documentation Status](https://readthedocs.org/projects/ott/badge/?version=latest)](https://ott.readthedocs.io/en/latest/?badge=latest)
