@@ -61,18 +61,28 @@ it, for `ellipsoid [0.25 0.25 0.12]`, `n_rel = 2.5`:
 disagreement.
 
 **The internal-field option** (`'internal', true`) routes SMARTIES' `st4MR`
-blocks through the same `sparseTmatrix` assembly. It works, and improves from
-80% to 16% disagreement with EBCM's internal matrix — but 16% is still poor and
-**unresolved**. The error is uniform in `m` (0.146 for `m ≥ 0`, 0.184 for
-`m < 0`), so it is not the achirality sign; the scattered matrix, which shares
-the identical code path, agrees to 0.4%. That points to a normalisation or
-definition difference rather than an assembly error — confirmed by repairing
-OTT's original hand-rolled unfold (adding the achirality sign, replacing
-`meshgrid` with `ndgrid`) and comparing: the two routes agree to `0.0000e+00`
-for the internal matrix *and* for the scattered one. Two independent assemblies
-agreeing does not make either right; both could share a wrong assumption about
-what OTT means by an internal T-matrix. **Treat the internal spheroid matrix as
-unvalidated.**
+blocks through the same `sparseTmatrix` assembly. Three things are established
+about it, and one is not:
+
+* **Definition and normalisation — exact.** A spheroid with `a_x = a_z` *is* a
+  sphere, and the internal Mie coefficients are analytic. Against
+  `ott.TmatrixMie(..., 'internal', true)` at matched `Nmax`, the SMARTIES
+  internal matrix agrees to **7e−16**, and the scattered one to **3.6e−16**.
+  Deviation then grows smoothly with aspect ratio (1.7e−2 at 1.02, 8.4e−2 at
+  1.10). So what OTT calls an internal T-matrix and what SMARTIES calls
+  `R = Q⁻¹` are the same object, in the same normalisation.
+* **Assembly — cross-checked.** Repairing OTT's original hand-rolled unfold
+  (achirality sign restored, `meshgrid` → `ndgrid`) and comparing against the
+  `sparseTmatrix` route gives `0.0000e+00` for the internal matrix and for the
+  scattered one.
+* **Not validated: a genuinely non-spherical internal matrix.** The sphere limit
+  is *blind* to both defects FIX 2 repairs — for a sphere the T-matrix is
+  diagonal, so a transposed block is unchanged and the `M12`/`M21` blocks
+  carrying the `m < 0` sign are zero. Both builds pass it identically. The only
+  reference left for an actual spheroid is `TmatrixEbcm`'s internal matrix,
+  which disagrees by 16% — but EBCM is the weaker method here (its scattered
+  unitarity error is 5.5e−3 against SMARTIES' 6.9e−4), so that number more
+  likely bounds EBCM than SMARTIES. **Unresolved.**
 
 ## Validation against COMSOL
 
