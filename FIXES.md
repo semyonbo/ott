@@ -78,11 +78,22 @@ about it, and one is not:
 * **Not validated: a genuinely non-spherical internal matrix.** The sphere limit
   is *blind* to both defects FIX 2 repairs — for a sphere the T-matrix is
   diagonal, so a transposed block is unchanged and the `M12`/`M21` blocks
-  carrying the `m < 0` sign are zero. Both builds pass it identically. The only
-  reference left for an actual spheroid is `TmatrixEbcm`'s internal matrix,
-  which disagrees by 16% — but EBCM is the weaker method here (its scattered
-  unitarity error is 5.5e−3 against SMARTIES' 6.9e−4), so that number more
-  likely bounds EBCM than SMARTIES. **Unresolved.**
+  carrying the `m < 0` sign are zero. Both builds pass it identically.
+
+  And the obvious physical test is **unavailable**, for a reason worth recording.
+  Tangential `E` must be continuous across the surface, but neither expansion
+  converges there: the outgoing (scattered) series is valid only outside the
+  circumscribing sphere `r > a`, the regular (internal) series only inside the
+  inscribed sphere `r < c`, and a spheroid's surface spans both. Measured for
+  `a = 0.25, c = 0.12`, the scattered field grows from `0.13` at `r = 1.0` to
+  `5.6e+09` at `r = 0.06` — the Rayleigh hypothesis, not a defect. A boundary
+  -condition check works only for a sphere, where the two radii coincide.
+
+  That leaves `TmatrixEbcm`'s internal matrix as the only non-spherical
+  reference, disagreeing by 16%; EBCM is the weaker method here (scattered
+  unitarity 5.5e−3 against SMARTIES' 6.9e−4), so that figure more likely bounds
+  EBCM than SMARTIES. Settling it needs an independent code — SMUTHI, DDA, or
+  FEM internal fields. **Unresolved.**
 
 ## Validation against COMSOL
 
