@@ -168,6 +168,56 @@ selection rule of Appendix B. Reproduce with
 Reproduce with `swforce_compare/matlab/ott_vs_comsol.m` (once per OTT build, per
 shape) and `swforce_compare/verification/report_ott_vs_comsol.py`.
 
+## Blast radius — what actually changes
+
+`(−1)^m` on `Y, Ytheta, Yphi` is a **basis gauge change**, applied uniformly, so
+most of the toolbox is invariant. Traced through every caller
+(`legendrerow` has exactly one caller, `spharm`; the chain is
+`legendrerow → spharm → vsh → vswf → vswfcart`):
+
+**Unchanged — physics identical:**
+
+| | why |
+|---|---|
+| `Bsc.emFieldXyz/Rtp`, `farfield`, `visualise*`, `power`, `intensityMoment` | the same `(−1)^m` appears in the coefficients and in `Y`, and cancels |
+| `ott.TmatrixMie` | analytic, never calls `spharm` |
+| `ott.TmatrixEbcm` | forms only products of two harmonics at the **same signed** `m`, giving `(−1)^{2m}=+1` |
+| `translate_z`, `Bsc.translateZ` | `m`-preserving, invariant under a `diag((−1)^m)` similarity |
+| `axial_equilibrium`, `find_traps`, `find_equilibrium`, `+ott/+shapes/` | no dependence |
+
+**Gauge only — stored numbers move, observables do not:**
+
+| | effect |
+|---|---|
+| all `Bsc*` beam constructors | `beam.a/.b → (−1)^m ×`, visible through `getCoefficients` |
+| `ott.TmatrixPm`, `ott.TmatrixDda` | `T_{nm,n'm'} → (−1)^{m−m'} ×`; unchanged for `m = m'`, and unchanged entirely for a particle with **even-fold z-rotational symmetry** |
+
+**Genuinely changed — two places, both with a convention that bypasses `spharm`:**
+
+1. **`ott.forcetorque`.** `Az/Bz/tz/Cz/Dz` pair `m` with `m` → `f_z, t_z, s_z`
+   bit-identical. `Axy/Bxy/txy/Cxy/Dxy` pair `m` with `m ± 1` →
+   `f_x, f_y, t_x, t_y, s_x, s_y` **exactly negated**, whenever the coefficients
+   span several `m`.
+2. **Rotations**, via `wigner_rotation_matrix` (unpatched, and hard-coded from a
+   Cartesian→spinor block that never touches `spharm`). The effective Cartesian
+   rotation changes from `Z·R·Z` to `R`, `Z = diag(−1,−1,1)`. So `rotateZ` is
+   unaffected, `rotateX`/`rotateY` had their effective angle negated,
+   `translateXyz` off the z axis was displacing by `Z·d`, and
+   `Bsc.scatter(…,'rotation',R)`, `forcetorque(…,'rotation',R)` and
+   `trap_stiffness` all move. Pure-z translation was always fine.
+
+**No compensating phase exists anywhere in `+ott/`**, so nothing double-counts.
+The one `(−1)^m` in `spharm.m` applies only to `m < 0` rows — that is the
+`Y(n,−m) = (−1)^m conj(Y(n,m))` relation, and it stays consistent after the patch.
+The compensation risk is in *caller* code (see below).
+
+**OTT's own test suite is unaffected.** `testForceTorque`, `testBscBessel`,
+`testExamples` and `testTmatrixSmarties` give identical outcomes on both builds
+(5/2, 4/0, 2/1, 4/0 pass/fail); the three failures are pre-existing upstream. No
+test encodes the old convention: the two value-pinned tests that could have
+caught it probe only `m = 0` coefficients and vector norms respectively — which
+is how the defect survived.
+
 ## What else changes, even though these files don't
 
 Removing the phase changes the behaviour of code it feeds. Both items below are
