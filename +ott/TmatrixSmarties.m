@@ -198,8 +198,11 @@ classdef TmatrixSmarties < ott.Tmatrix
       %   (b) it indexed through meshgrid(rows, cols), whose FIRST argument
       %       varies along the COLUMNS, so every block was stored transposed.
       % Measured on an oblate spheroid: achirality violated by 2.0 (a 100%
-      % breach), unitarity 1.06e-3 for a lossless particle, and ~31% median /
-      % 130% worst-case error against COMSOL.
+      % breach) and unitarity 1.06e-3 for a lossless particle.  Against COMSOL
+      % over 114 orientations the unpatched force error is 53.6% / 56.7% / 63.7%
+      % (F_z / F_xy / T_xy), against 0.85% / 0.49% / 0.32% patched.  An
+      % independent solver, ott.TmatrixEbcm, agrees with the patched matrix to
+      % 3.8e-03 and with the unpatched one to only 9.98e-02.  See FIXES.md.
       %
       % SMARTIES ships sparseTmatrix, which applies the sign itself and returns
       % the assembled matrix ALREADY in Nieminen ordering -- byte-identical to
