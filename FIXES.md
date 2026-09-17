@@ -1,7 +1,11 @@
 # OTT-Fixed
 
-MATLAB OTT with two convention/coding defects repaired. Diff against the upstream
-checkout at `~/git/StandingWave/ott` is **two files**.
+MATLAB OTT with two convention/coding defects repaired. The **functional** diff
+against upstream is two files — `+ott/+utils/spharm.m` (three lines) and
+`+ott/TmatrixSmarties.m`. A third file, `+ott/+utils/wigner_rotation_matrix.m`,
+differs by a comment only; no code in it changed. Several other files show
+line-ending-only differences and are byte-identical under
+`diff --strip-trailing-cr`.
 
 ## FIX 1 — Condon–Shortley phase (`+ott/+utils/spharm.m`)
 
