@@ -70,6 +70,14 @@ under it. Requesting `+0.3λ` unpatched moved the beam to `+0.3` along x but
 `−0.3` along z — two branches of the same function, only one of which uses the
 rotation path. Patched, all axes obey one rule to `5e−15`.
 
+**The two defects cancel for the commonest calculation.** A laterally displaced
+on-axis beam has the beam put on the wrong side *and* `F_x` negated, and the
+product is right: the lateral force curve is identical in both builds to
+`0.000e+00`. Axial and lateral trap stiffness with an on-axis beam were never
+affected — which is how this survived. What was wrong is narrower: beams
+**constructed** at an angle, rotated non-axisymmetric particles, and the
+**position** of a laterally translated beam if you looked at its field.
+
 Scripts that compensated for the old convention must drop the workaround.
 
 ---
